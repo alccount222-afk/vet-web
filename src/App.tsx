@@ -21,7 +21,7 @@ const FIREBASE_CONFIG = {
 };
 const EMAILJS_CONFIG = {
   serviceId: "service_wf1rtff",
-  templateId: "template_k45n5s8",
+  templateId: "template_qq2sxfb",
   publicKey: "U7nHeF5kepr6V2g1Z",
 };
 
