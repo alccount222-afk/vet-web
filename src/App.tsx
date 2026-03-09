@@ -59,8 +59,9 @@ const cloud = {
 };
 
 async function sendRegistrationEmail(name, clinic, email) {
+  console.log("📧 Intentando enviar email...", { name, clinic, email });
   try {
-    await emailjs.send(
+    const result = await emailjs.send(
       EMAILJS_CONFIG.serviceId,
       EMAILJS_CONFIG.templateId,
       {
@@ -72,8 +73,9 @@ async function sendRegistrationEmail(name, clinic, email) {
       },
       EMAILJS_CONFIG.publicKey
     );
+    console.log("✅ Email enviado:", result);
   } catch (e) {
-    console.error("EmailJS error:", e);
+    console.error("❌ EmailJS error:", e);
   }
 }
 
