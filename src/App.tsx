@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { initializeApp } from "firebase/app";
+import emailjs from "@emailjs/browser";
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -17,6 +18,11 @@ const FIREBASE_CONFIG = {
   storageBucket: "vetcare-mvp.firebasestorage.app",
   messagingSenderId: "1002161594654",
   appId: "1:1002161594654:web:25bf86c57673a0bbe4290f",
+};
+const EMAILJS_CONFIG = {
+  serviceId: "service_wf1rtff",
+  templateId: "template_gg2sxfb",
+  publicKey: "U7nHeF5kepr6V2g1Z",
 };
 
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
@@ -54,23 +60,20 @@ const cloud = {
 
 async function sendRegistrationEmail(name, clinic, email) {
   try {
-    const result = await fetch("https://api.web3forms.com/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        access_key: "b6706da0-295d-4ad1-a5c4-7cbfbb861ede",
-        subject: "Nueva veterinaria registrada en VetCare MVP",
-        from_name: "VetCare",
-        name: name,
-        clinic: clinic,
-        email: email,
+    await emailjs.send(
+      EMAILJS_CONFIG.serviceId,
+      EMAILJS_CONFIG.templateId,
+      {
+        vet_name: name,
+        vet_clinic: clinic,
+        vet_email: email,
         registered_at: new Date().toLocaleString("es-ES"),
-      }),
-    });
-    const data = await result.json();
-    console.log("✅ Email enviado:", data);
+        to_email: "alccount222@gmail.com",
+      },
+      EMAILJS_CONFIG.publicKey
+    );
   } catch (e) {
-    console.error("❌ Error:", e);
+    console.error("EmailJS error:", e);
   }
 }
 
@@ -304,7 +307,7 @@ function AuthScreen({ onAuth }) {
         await cloud.save(cred.user.uid, "vaccines", SEED_VACCINES);
         await cloud.save(cred.user.uid, "appointments", SEED_APPOINTMENTS);
         await cloud.save(cred.user.uid, "inventory", SEED_INVENTORY);
-        await sendRegistrationEmail(form.name, form.clinic, form.email);
+        sendRegistrationEmail(form.name, form.clinic, form.email);
         onAuth(cred.user);
       }
     } catch (err) {
@@ -1585,6 +1588,7 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
     "En consulta": C.info,
     Pendiente: C.textMuted,
     Completado: C.purple,
+    Cancelado: C.danger,
   };
   const STATUS_BG = {
     Confirmado: "#00D4A018",
@@ -1592,6 +1596,7 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
     "En consulta": "#4DA6FF18",
     Pendiente: "#64748B12",
     Completado: "#9B72FF18",
+    Cancelado: "#FF4D6D12",
   };
 
   const today = new Date();
@@ -1607,11 +1612,24 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
       "En consulta",
       "Completado",
     ];
+    if (apt.status === "Cancelado") return;
     const next = cycle[(cycle.indexOf(apt.status) + 1) % cycle.length];
     await onUpdate(
       appointments.map((a) => (a.id === apt.id ? { ...a, status: next } : a))
     );
     if (selectedApt?.id === apt.id) setSelectedApt({ ...apt, status: next });
+  };
+
+  const cancelApt = async (apt) => {
+    await onUpdate(
+      appointments.map((a) => (a.id === apt.id ? { ...a, status: "Cancelado" } : a))
+    );
+    if (selectedApt?.id === apt.id) setSelectedApt({ ...apt, status: "Cancelado" });
+  };
+
+  const deleteApt = async (apt) => {
+    await onUpdate(appointments.filter((a) => a.id !== apt.id));
+    setSelectedApt(null);
   };
 
   // ── SHARED HEADER ──────────────────────────────────────────────────────────
@@ -2450,6 +2468,7 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
             "En consulta",
             "Pendiente",
             "Completado",
+            "Cancelado",
           ].map((f) => (
             <button
               key={f}
@@ -2584,12 +2603,46 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
                           {a.time}
                         </div>
                         <Badge color={STATUS_COLOR[a.status]}>{a.status}</Badge>
+                        {a.status !== "Cancelado" && a.status !== "Completado" && (
+                          <button
+                            onClick={(e) => cycleStatus(a, e)}
+                            style={{
+                              background: "transparent",
+                              border: `1px solid ${C.border}`,
+                              color: C.text,
+                              borderRadius: 6,
+                              padding: "4px 10px",
+                              cursor: "pointer",
+                              fontSize: 12,
+                              fontWeight: 600,
+                            }}
+                          >
+                            →
+                          </button>
+                        )}
+                        {a.status !== "Cancelado" && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); cancelApt(a); }}
+                            style={{
+                              background: C.warning + "15",
+                              border: `1px solid ${C.warning}30`,
+                              color: "#92400e",
+                              borderRadius: 6,
+                              padding: "4px 10px",
+                              cursor: "pointer",
+                              fontSize: 12,
+                              fontWeight: 600,
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
                         <button
-                          onClick={(e) => cycleStatus(a, e)}
+                          onClick={(e) => { e.stopPropagation(); deleteApt(a); }}
                           style={{
-                            background: "transparent",
-                            border: `1px solid ${C.border}`,
-                            color: C.text,
+                            background: C.danger + "10",
+                            border: `1px solid ${C.danger}25`,
+                            color: C.danger,
                             borderRadius: 6,
                             padding: "4px 10px",
                             cursor: "pointer",
@@ -2597,7 +2650,7 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
                             fontWeight: 600,
                           }}
                         >
-                          →
+                          🗑
                         </button>
                       </div>
                     ))}
@@ -2610,7 +2663,6 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
     );
   };
 
-  // ── APPOINTMENT DETAIL SIDE PANEL ──────────────────────────────────────────
   const AptDetailPanel = ({ apt, onClose, onCycle }) => (
     <div className="fade-in" style={{ width: 280, flexShrink: 0 }}>
       <Card style={{ position: "sticky", top: 0, padding: 20 }}>
@@ -2756,6 +2808,7 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
               "En espera",
               "En consulta",
               "Completado",
+              "Cancelado",
             ].map((s) => (
               <span
                 key={s}
@@ -2776,22 +2829,61 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
             ))}
           </div>
         </div>
-        <button
-          onClick={(e) => onCycle(apt, e)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            background: C.accent,
-            border: "none",
-            borderRadius: 10,
-            fontWeight: 700,
-            cursor: "pointer",
-            fontSize: 13,
-            color: "#000",
-          }}
-        >
-          Avanzar estado →
-        </button>
+        {apt.status !== "Cancelado" && apt.status !== "Completado" && (
+          <button
+            onClick={(e) => onCycle(apt, e)}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: C.accent,
+              border: "none",
+              borderRadius: 10,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#000",
+              marginBottom: 8,
+            }}
+          >
+            Avanzar estado →
+          </button>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          {apt.status !== "Cancelado" && (
+            <button
+              onClick={() => cancelApt(apt)}
+              style={{
+                flex: 1,
+                padding: "8px",
+                background: C.warning + "15",
+                border: `1px solid ${C.warning}30`,
+                borderRadius: 10,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: 12,
+                color: "#92400e",
+              }}
+            >
+              ✕ Cancelar
+            </button>
+          )}
+          <button
+            onClick={() => deleteApt(apt)}
+            style={{
+              flex: 1,
+              padding: "8px",
+              background: C.danger + "10",
+              border: `1px solid ${C.danger}30`,
+              borderRadius: 10,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: 12,
+              color: C.danger,
+            }}
+          >
+            🗑 Eliminar
+          </button>
+        </div>
       </Card>
     </div>
   );
@@ -3539,7 +3631,7 @@ function PatientDetail({
                 }}
               />
               {[...visits]
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
                 .map((v, i) => (
                   <div
                     key={i}
@@ -3756,12 +3848,8 @@ function RecordsPage({
   const fileInputRef = useRef(null);
 
   const petsWithRecords = useMemo(() => {
-    return pets.filter(
-      (p) =>
-        visits.some((v) => v.petId === p.id) ||
-        vaccines.some((v) => v.petId === p.id)
-    );
-  }, [pets, visits, vaccines]);
+    return pets;
+  }, [pets]);
 
   const filtered = useMemo(() => {
     if (!search) return petsWithRecords;
@@ -3861,7 +3949,7 @@ function RecordsPage({
     marginBottom: 16,
   });
 
-  const ItemActions = ({ onEdit, id }) => (
+  const ItemActions = ({ onEdit, onDelete, id }) => (
     <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexShrink: 0 }}>
       <button
         onClick={onEdit}
@@ -4035,7 +4123,7 @@ function RecordsPage({
             letterSpacing: ".5px",
           }}
         >
-          {filtered.length} pacientes con historial
+          {filtered.length} paciente{filtered.length !== 1 ? "s" : ""}
         </div>
         <div
           style={{
@@ -4055,10 +4143,8 @@ function RecordsPage({
                 fontSize: 13,
               }}
             >
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-              Sin registros aún.
-              <br />
-              Agrega consultas o vacunas desde la ficha del paciente.
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🐾</div>
+              Sin pacientes registrados aún.
             </div>
           )}
           {filtered.map((p) => {
@@ -4286,7 +4372,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...petVaccines]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4399,7 +4485,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...treatments]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4587,7 +4673,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...surgeries]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4767,7 +4853,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...consultations]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .map((v, i) => (
                       <div
                         key={i}
