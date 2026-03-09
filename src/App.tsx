@@ -28,7 +28,6 @@ const EMAILJS_CONFIG = {
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
-emailjs.init("U7nHeF5kepr6V2g1Z");
 
 // ─── CLOUD HELPERS ────────────────────────────────────────────────────────────
 const cloud = {
@@ -60,7 +59,6 @@ const cloud = {
 };
 
 async function sendRegistrationEmail(name, clinic, email) {
-  console.log("📧 Intentando enviar email...", { name, clinic, email });
   try {
     const result = await emailjs.send(
       EMAILJS_CONFIG.serviceId,
@@ -71,8 +69,8 @@ async function sendRegistrationEmail(name, clinic, email) {
         vet_email: email,
         registered_at: new Date().toLocaleString("es-ES"),
         to_email: "alccount222@gmail.com",
-      },
-      EMAILJS_CONFIG.publicKey
+      }
+      // ← sin el 4to parámetro de la public key
     );
     console.log("✅ Email enviado:", result);
   } catch (e) {
