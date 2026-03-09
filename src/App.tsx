@@ -3542,7 +3542,7 @@ function PatientDetail({
                 }}
               />
               {[...visits]
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 .map((v, i) => (
                   <div
                     key={i}
@@ -4289,7 +4289,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...petVaccines]
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4402,7 +4402,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...treatments]
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4590,7 +4590,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...surgeries]
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4770,7 +4770,7 @@ function RecordsPage({
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...consultations]
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((v, i) => (
                       <div
                         key={i}
