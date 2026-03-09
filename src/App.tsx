@@ -28,6 +28,7 @@ const EMAILJS_CONFIG = {
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
+emailjs.init("U7nHeF5kepr6V2g1Z");
 
 // ─── CLOUD HELPERS ────────────────────────────────────────────────────────────
 const cloud = {
