@@ -309,7 +309,7 @@ function AuthScreen({ onAuth }) {
         await cloud.save(cred.user.uid, "vaccines", SEED_VACCINES);
         await cloud.save(cred.user.uid, "appointments", SEED_APPOINTMENTS);
         await cloud.save(cred.user.uid, "inventory", SEED_INVENTORY);
-        sendRegistrationEmail(form.name, form.clinic, form.email);
+        await sendRegistrationEmail(form.name, form.clinic, form.email);
         onAuth(cred.user);
       }
     } catch (err) {
