@@ -3582,7 +3582,7 @@ function PatientDetail({
           </div>
         </div>
       )}
-      {tab === "historial" && (
+      {tab === "Consultas" && (
         <div>
           <div
             style={{
@@ -3822,7 +3822,7 @@ function PatientDetail({
   );
 }
 
-// ─── RECORDS PAGE — HISTORIAL CLÍNICO EDITABLE ───────────────────────────────
+// ─── RECORDS PAGE —  CLÍNICO EDITABLE ───────────────────────────────
 function RecordsPage({
   visits,
   pets,
