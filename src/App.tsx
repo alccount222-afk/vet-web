@@ -3949,7 +3949,7 @@ function RecordsPage({
     marginBottom: 16,
   });
 
-  const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
+const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
     <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexShrink: 0 }}>
       <button
         onClick={onEdit}
