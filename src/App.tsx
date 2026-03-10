@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import emailjs from "@emailjs/browser";
 import {
-  getAuth,
+  getAuth, 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
