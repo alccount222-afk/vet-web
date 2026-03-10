@@ -19,12 +19,6 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "1002161594654",
   appId: "1:1002161594654:web:25bf86c57673a0bbe4290f",
 };
-const EMAILJS_CONFIG = {
-  serviceId: "service_wf1rtff",
-  templateId: "template_gg2sxfb",
-  publicKey: "U7nHeF5kepr6V2g1Z",
-};
-
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
@@ -60,20 +54,21 @@ const cloud = {
 
 async function sendRegistrationEmail(name, clinic, email) {
   try {
-    await emailjs.send(
-      EMAILJS_CONFIG.serviceId,
-      EMAILJS_CONFIG.templateId,
-      {
-        vet_name: name,
-        vet_clinic: clinic,
-        vet_email: email,
+    await fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_key: "b6706da0-295d-4ad1-a5c4-7cbfbb861ede",
+        subject: "Nueva veterinaria registrada en VetCare MVP",
+        from_name: "VetCare",
+        name: name,
+        clinic: clinic,
+        email: email,
         registered_at: new Date().toLocaleString("es-ES"),
-        to_email: "alccount222@gmail.com",
-      },
-      EMAILJS_CONFIG.publicKey
-    );
+      }),
+    });
   } catch (e) {
-    console.error("EmailJS error:", e);
+    console.error("Web3Forms error:", e);
   }
 }
 
