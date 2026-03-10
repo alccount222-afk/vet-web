@@ -3202,7 +3202,7 @@ function PatientDetail({
   const [editForm, setEditForm] = useState(pet);
   const tabs = [
     ["info", "ℹ️ Info"],
-    ["historial", "📋 Historial"],
+    ["Consultas", "📋 Consultas"],
     ["vacunas", "💉 Vacunas"],
     ["citas", "📅 Citas"],
   ];
