@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import emailjs from "@emailjs/browser";
 import {
-  getAuth, 
+  getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
@@ -261,7 +262,7 @@ function Input({ label, ...props }) {
 
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState("login"); // "login" | "register" | "forgot"
   const [form, setForm] = useState({
     name: "",
     clinic: "",
@@ -270,6 +271,7 @@ function AuthScreen({ onAuth }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetSent, setResetSent] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -283,7 +285,7 @@ function AuthScreen({ onAuth }) {
           form.password
         );
         onAuth(cred.user);
-      } else {
+      } else if (mode === "register") {
         const cred = await createUserWithEmailAndPassword(
           auth,
           form.email,
@@ -304,11 +306,29 @@ function AuthScreen({ onAuth }) {
         await cloud.save(cred.user.uid, "inventory", SEED_INVENTORY);
         sendRegistrationEmail(form.name, form.clinic, form.email);
         onAuth(cred.user);
+      } else if (mode === "forgot") {
+        await sendPasswordResetEmail(auth, form.email);
+        setResetSent(true);
       }
     } catch (err) {
-      setError(err.message);
+      const msgs = {
+        "auth/email-already-in-use": "Ya existe una cuenta con ese correo.",
+        "auth/wrong-password": "Contraseña incorrecta.",
+        "auth/user-not-found": "No existe una cuenta con ese correo.",
+        "auth/weak-password": "La contraseña debe tener al menos 6 caracteres.",
+        "auth/invalid-credential": "Correo o contraseña incorrectos.",
+        "auth/invalid-email": "El correo ingresado no es válido.",
+        "auth/too-many-requests": "Demasiados intentos. Espera unos minutos.",
+      };
+      setError(msgs[err.code] || err.message);
     }
     setLoading(false);
+  };
+
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    setError("");
+    setResetSent(false);
   };
 
   return (
@@ -319,6 +339,7 @@ function AuthScreen({ onAuth }) {
         gridTemplateColumns: "1fr 1fr",
       }}
     >
+      {/* ── HERO ── */}
       <div
         style={{
           background: `linear-gradient(135deg, #F0FDF4, #E0F2FE)`,
@@ -372,7 +393,51 @@ function AuthScreen({ onAuth }) {
           Gestiona pacientes, citas, e historial clínico. Datos guardados en la
           nube — accesibles desde cualquier dispositivo.
         </p>
+        <div
+          style={{
+            marginTop: 40,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          {[
+            ["☁️", "Datos en la nube, recuperables con tu correo"],
+            ["📋", "Historial clínico completo por paciente"],
+            ["💉", "Control de vacunas y alertas automáticas"],
+            ["🔒", "Contraseña recuperable en cualquier momento"],
+          ].map(([icon, text]) => (
+            <div
+              key={text}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                fontSize: 14,
+                color: "#475569",
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  background: C.accent + "20",
+                  borderRadius: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                {icon}
+              </div>
+              {text}
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* ── FORM SIDE ── */}
       <div
         style={{
           display: "flex",
@@ -383,110 +448,320 @@ function AuthScreen({ onAuth }) {
         }}
       >
         <div style={{ width: "100%", maxWidth: 400 }}>
-          <div
-            style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: 30,
-              fontWeight: 700,
-              marginBottom: 8,
-            }}
-          >
-            {mode === "login" ? "Bienvenido de vuelta" : "Crear cuenta"}
-          </div>
-          <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 28 }}>
-            {mode === "login"
-              ? "Ingresa con tu correo para acceder a tus datos"
-              : "Regístrate — tus datos quedan seguros"}
-          </p>
-          {error && (
-            <div
-              style={{
-                background: "#FF4D6D15",
-                color: C.danger,
-                border: `1px solid ${C.danger}30`,
-                borderRadius: 8,
-                padding: "10px 14px",
-                fontSize: 13,
-                marginBottom: 16,
-              }}
-            >
-              ⚠️ {error}
-            </div>
+          {/* ── FORGOT PASSWORD VIEW ── */}
+          {mode === "forgot" && (
+            <>
+              <button
+                onClick={() => switchMode("login")}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: C.textMuted,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 24,
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                ← Volver al inicio de sesión
+              </button>
+
+              {resetSent ? (
+                /* ── SUCCESS STATE ── */
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "32px 0",
+                  }}
+                >
+                  <div style={{ fontSize: 56, marginBottom: 16 }}>📧</div>
+                  <div
+                    style={{
+                      fontFamily: "'Playfair Display', serif",
+                      fontSize: 24,
+                      fontWeight: 700,
+                      marginBottom: 12,
+                    }}
+                  >
+                    ¡Correo enviado!
+                  </div>
+                  <p
+                    style={{
+                      color: C.textMuted,
+                      fontSize: 14,
+                      lineHeight: 1.6,
+                      marginBottom: 24,
+                    }}
+                  >
+                    Revisa tu bandeja de entrada en{" "}
+                    <strong>{form.email}</strong>. Haz clic en el enlace del
+                    correo para restablecer tu contraseña.
+                  </p>
+                  <div
+                    style={{
+                      background: C.accent + "12",
+                      border: `1px solid ${C.accent}30`,
+                      borderRadius: 10,
+                      padding: "12px 16px",
+                      fontSize: 13,
+                      color: "#0f766e",
+                      marginBottom: 24,
+                      textAlign: "left",
+                    }}
+                  >
+                    💡 Si no lo ves, revisa tu carpeta de{" "}
+                    <strong>spam o correo no deseado</strong>.
+                  </div>
+                  <button
+                    onClick={() => switchMode("login")}
+                    style={{
+                      width: "100%",
+                      padding: 13,
+                      background: C.accent,
+                      color: "#1E293B",
+                      border: "none",
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 15,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Volver al inicio de sesión
+                  </button>
+                </div>
+              ) : (
+                /* ── FORGOT FORM ── */
+                <>
+                  <div
+                    style={{
+                      fontFamily: "'Playfair Display', serif",
+                      fontSize: 28,
+                      fontWeight: 700,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Recuperar contraseña
+                  </div>
+                  <p
+                    style={{
+                      color: C.textMuted,
+                      fontSize: 14,
+                      marginBottom: 28,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Ingresa tu correo y te enviaremos un enlace para restablecer
+                    tu contraseña.
+                  </p>
+                  {error && (
+                    <div
+                      style={{
+                        background: "#FF4D6D15",
+                        color: C.danger,
+                        border: `1px solid ${C.danger}30`,
+                        borderRadius: 8,
+                        padding: "10px 14px",
+                        fontSize: 13,
+                        marginBottom: 16,
+                      }}
+                    >
+                      ⚠️ {error}
+                    </div>
+                  )}
+                  <form onSubmit={handleSubmit}>
+                    <Input
+                      label="Correo electrónico"
+                      type="email"
+                      required
+                      placeholder="vet@clinica.com"
+                      value={form.email}
+                      onChange={(e) =>
+                        setForm({ ...form, email: e.target.value })
+                      }
+                    />
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      style={{
+                        width: "100%",
+                        padding: 13,
+                        background: C.accent,
+                        color: "#1E293B",
+                        border: "none",
+                        borderRadius: 10,
+                        fontWeight: 700,
+                        fontSize: 15,
+                        cursor: "pointer",
+                        opacity: loading ? 0.7 : 1,
+                      }}
+                    >
+                      {loading
+                        ? "Enviando..."
+                        : "Enviar enlace de recuperación"}
+                    </button>
+                  </form>
+                </>
+              )}
+            </>
           )}
-          <form onSubmit={handleSubmit}>
-            {mode === "register" && (
-              <>
+
+          {/* ── LOGIN / REGISTER VIEW ── */}
+          {mode !== "forgot" && (
+            <>
+              <div
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontSize: 30,
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                {mode === "login" ? "Bienvenido de vuelta" : "Crear cuenta"}
+              </div>
+              <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 28 }}>
+                {mode === "login"
+                  ? "Ingresa con tu correo para acceder a tus datos"
+                  : "Regístrate — tus datos quedan seguros"}
+              </p>
+              {error && (
+                <div
+                  style={{
+                    background: "#FF4D6D15",
+                    color: C.danger,
+                    border: `1px solid ${C.danger}30`,
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    marginBottom: 16,
+                  }}
+                >
+                  ⚠️ {error}
+                </div>
+              )}
+              <form onSubmit={handleSubmit}>
+                {mode === "register" && (
+                  <>
+                    <Input
+                      label="Tu nombre"
+                      required
+                      placeholder="Dr. García"
+                      value={form.name}
+                      onChange={(e) =>
+                        setForm({ ...form, name: e.target.value })
+                      }
+                    />
+                    <Input
+                      label="Nombre de la clínica"
+                      required
+                      placeholder="Clínica Veterinaria..."
+                      value={form.clinic}
+                      onChange={(e) =>
+                        setForm({ ...form, clinic: e.target.value })
+                      }
+                    />
+                  </>
+                )}
                 <Input
-                  label="Tu nombre"
+                  label="Correo electrónico"
+                  type="email"
                   required
-                  placeholder="Dr. García"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="vet@clinica.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
-                <Input
-                  label="Nombre de la clínica"
-                  required
-                  placeholder="Clínica Veterinaria..."
-                  value={form.clinic}
-                  onChange={(e) => setForm({ ...form, clinic: e.target.value })}
-                />
-              </>
-            )}
-            <Input
-              label="Correo electrónico"
-              type="email"
-              required
-              placeholder="vet@clinica.com"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-            <Input
-              label="Contraseña"
-              type="password"
-              required
-              placeholder="Mínimo 6 caracteres"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: 13,
-                background: C.accent,
-                color: "#1E293B",
-                border: "none",
-                borderRadius: 10,
-                fontWeight: 700,
-                fontSize: 15,
-                cursor: "pointer",
-                marginTop: 4,
-              }}
-            >
-              {loading
-                ? "Cargando..."
-                : mode === "login"
-                ? "Entrar al panel"
-                : "Crear cuenta"}
-            </button>
-          </form>
-          <div style={{ height: 1, background: C.border, margin: "20px 0" }} />
-          <p style={{ textAlign: "center", fontSize: 13, color: C.textMuted }}>
-            {mode === "login" ? "¿Eres nuevo?" : "¿Ya tienes cuenta?"}{" "}
-            <span
-              style={{ color: "#00b386", cursor: "pointer", fontWeight: 700 }}
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
-            >
-              {mode === "login" ? "Regístrate gratis" : "Inicia sesión"}
-            </span>
-          </p>
+                <div style={{ position: "relative" }}>
+                  <Input
+                    label="Contraseña"
+                    type="password"
+                    required
+                    placeholder="Mínimo 6 caracteres"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                  />
+                  {/* Forgot password link — solo visible en login */}
+                  {mode === "login" && (
+                    <button
+                      type="button"
+                      onClick={() => switchMode("forgot")}
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        top: 0,
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#00b386",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: 0,
+                      }}
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    padding: 13,
+                    background: C.accent,
+                    color: "#1E293B",
+                    border: "none",
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    fontSize: 15,
+                    cursor: "pointer",
+                    marginTop: 4,
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                >
+                  {loading
+                    ? "Cargando..."
+                    : mode === "login"
+                    ? "Entrar al panel"
+                    : "Crear cuenta"}
+                </button>
+              </form>
+
+              <div
+                style={{ height: 1, background: C.border, margin: "20px 0" }}
+              />
+              <p
+                style={{
+                  textAlign: "center",
+                  fontSize: 13,
+                  color: C.textMuted,
+                }}
+              >
+                {mode === "login" ? "¿Eres nuevo?" : "¿Ya tienes cuenta?"}{" "}
+                <span
+                  style={{
+                    color: "#00b386",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                  onClick={() =>
+                    switchMode(mode === "login" ? "register" : "login")
+                  }
+                >
+                  {mode === "login" ? "Regístrate gratis" : "Inicia sesión"}
+                </span>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
 // ─── MAIN PLATFORM ────────────────────────────────────────────────────────────
 export default function VetPlatform() {
   const [authUser, setAuthUser] = useState(undefined);
@@ -1617,9 +1892,12 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
 
   const cancelApt = async (apt) => {
     await onUpdate(
-      appointments.map((a) => (a.id === apt.id ? { ...a, status: "Cancelado" } : a))
+      appointments.map((a) =>
+        a.id === apt.id ? { ...a, status: "Cancelado" } : a
+      )
     );
-    if (selectedApt?.id === apt.id) setSelectedApt({ ...apt, status: "Cancelado" });
+    if (selectedApt?.id === apt.id)
+      setSelectedApt({ ...apt, status: "Cancelado" });
   };
 
   const deleteApt = async (apt) => {
@@ -2598,26 +2876,30 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
                           {a.time}
                         </div>
                         <Badge color={STATUS_COLOR[a.status]}>{a.status}</Badge>
-                        {a.status !== "Cancelado" && a.status !== "Completado" && (
-                          <button
-                            onClick={(e) => cycleStatus(a, e)}
-                            style={{
-                              background: "transparent",
-                              border: `1px solid ${C.border}`,
-                              color: C.text,
-                              borderRadius: 6,
-                              padding: "4px 10px",
-                              cursor: "pointer",
-                              fontSize: 12,
-                              fontWeight: 600,
-                            }}
-                          >
-                            →
-                          </button>
-                        )}
+                        {a.status !== "Cancelado" &&
+                          a.status !== "Completado" && (
+                            <button
+                              onClick={(e) => cycleStatus(a, e)}
+                              style={{
+                                background: "transparent",
+                                border: `1px solid ${C.border}`,
+                                color: C.text,
+                                borderRadius: 6,
+                                padding: "4px 10px",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                fontWeight: 600,
+                              }}
+                            >
+                              →
+                            </button>
+                          )}
                         {a.status !== "Cancelado" && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); cancelApt(a); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              cancelApt(a);
+                            }}
                             style={{
                               background: C.warning + "15",
                               border: `1px solid ${C.warning}30`,
@@ -2633,7 +2915,10 @@ function AppointmentsPage({ appointments, onAdd, onUpdate }) {
                           </button>
                         )}
                         <button
-                          onClick={(e) => { e.stopPropagation(); deleteApt(a); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteApt(a);
+                          }}
                           style={{
                             background: C.danger + "10",
                             border: `1px solid ${C.danger}25`,
@@ -3626,7 +3911,10 @@ function PatientDetail({
                 }}
               />
               {[...visits]
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .sort(
+                  (a, b) =>
+                    new Date(b.date).getTime() - new Date(a.date).getTime()
+                )
                 .map((v, i) => (
                   <div
                     key={i}
@@ -3944,7 +4232,7 @@ function RecordsPage({
     marginBottom: 16,
   });
 
-const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
+  const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
     <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexShrink: 0 }}>
       <button
         onClick={onEdit}
@@ -4367,7 +4655,10 @@ const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...petVaccines]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort(
+                      (a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    )
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4480,7 +4771,10 @@ const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...treatments]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort(
+                      (a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    )
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4668,7 +4962,10 @@ const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...surgeries]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort(
+                      (a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    )
                     .map((v, i) => (
                       <div
                         key={i}
@@ -4848,7 +5145,10 @@ const ItemActions = ({ onEdit, id }: { onEdit: any; id: any }) => (
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   {[...consultations]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort(
+                      (a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    )
                     .map((v, i) => (
                       <div
                         key={i}
