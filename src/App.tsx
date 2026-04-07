@@ -54,61 +54,30 @@ const cloud = {
 };
 async function sendRegistrationEmail(name, clinic, email) {
   try {
-    const res = await fetch("https://api.web3forms.com/submit", {
+    const formData = new FormData();
+    formData.append("access_key", "b6706da0-295d-4ad1-a5c4-7cbfbb861ede");
+    formData.append("subject", "🐾 Nueva veterinaria registrada en VetCare MVP");
+    formData.append("from_name", "VetCare MVP");
+    formData.append("name", name);
+    formData.append("email", email);
+    formData.append("message",
+      `Nueva veterinaria registrada:\n\nNombre: ${name}\nClínica: ${clinic}\nCorreo: ${email}\nFecha: ${new Date().toLocaleString("es-ES")}`
+    );
+
+    const response = await fetch("https://api.web3forms.com/submit", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        access_key: "b6706da0-295d-4ad1-a5c4-7cbfbb861ede",
-        subject: "Nueva veterinaria registrada en VetCare MVP",
-        from_name: "VetCare",
-        name: name,
-        clinic: clinic,
-        email: email,
-        message: `Nueva veterinaria registrada:\nNombre: ${name}\nClínica: ${clinic}\nCorreo: ${email}\nFecha: ${new Date().toLocaleString("es-ES")}`,
-        registered_at: new Date().toLocaleString("es-ES"),
-      }),
+      body: formData,
     });
 
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      console.error("Web3Forms error:", data);
+    const data = await response.json();
+    if (data.success) {
+      console.log("✅ Notificación enviada a tu correo");
     } else {
-      console.log("Email enviado correctamente:", data.message);
+      console.warn("⚠️ Web3Forms error:", data);
     }
   } catch (e) {
-    console.error("Web3Forms fetch error:", e);
+    console.error("Error Web3Forms:", e);
   }
-}
-
-function exportData(profile, pets, visits, vaccines, appointments, inventory) {
-  const obj = {
-    _meta: {
-      exportDate: new Date().toISOString(),
-      vetcareVersion: "MVP-2.1",
-      migracionKey: profile?.email,
-    },
-    profile,
-    pets,
-    visits,
-    vaccines,
-    appointments,
-    inventory,
-  };
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(
-    new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" })
-  );
-  a.download = `vetcare_${profile?.email?.replace(/@/g, "_at_")}_${
-    new Date().toISOString().split("T")[0]
-  }.json`;
-  a.click();
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
 }
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
