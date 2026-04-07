@@ -52,12 +52,14 @@ const cloud = {
     };
   },
 };
-
 async function sendRegistrationEmail(name, clinic, email) {
   try {
-    await fetch("https://api.web3forms.com/submit", {
+    const res = await fetch("https://api.web3forms.com/submit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
       body: JSON.stringify({
         access_key: "b6706da0-295d-4ad1-a5c4-7cbfbb861ede",
         subject: "Nueva veterinaria registrada en VetCare MVP",
@@ -65,11 +67,19 @@ async function sendRegistrationEmail(name, clinic, email) {
         name: name,
         clinic: clinic,
         email: email,
+        message: `Nueva veterinaria registrada:\nNombre: ${name}\nClínica: ${clinic}\nCorreo: ${email}\nFecha: ${new Date().toLocaleString("es-ES")}`,
         registered_at: new Date().toLocaleString("es-ES"),
       }),
     });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      console.error("Web3Forms error:", data);
+    } else {
+      console.log("Email enviado correctamente:", data.message);
+    }
   } catch (e) {
-    console.error("Web3Forms error:", e);
+    console.error("Web3Forms fetch error:", e);
   }
 }
 
