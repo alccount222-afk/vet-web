@@ -79,6 +79,29 @@ async function sendRegistrationEmail(name, clinic, email) {
     console.error("Error Web3Forms:", e);
   }
 }
+function exportData(profile, pets, visits, vaccines, appointments, inventory) {
+  const obj = {
+    _meta: {
+      exportDate: new Date().toISOString(),
+      vetcareVersion: "MVP-2.1",
+      migracionKey: profile?.email,
+    },
+    profile,
+    pets,
+    visits,
+    vaccines,
+    appointments,
+    inventory,
+  };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(
+    new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" })
+  );
+  a.download = `vetcare_${profile?.email?.replace(/@/g, "_at_")}_${
+    new Date().toISOString().split("T")[0]
+  }.json`;
+  a.click();
+}
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const SEED_PETS = [
