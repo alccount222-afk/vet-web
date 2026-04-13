@@ -1,47 +1,4 @@
 
-import { initializeApp } from "firebase/app";
-
-import emailjs from "@emailjs/browser";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-} from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-
-// ─── CREDENCIALES ─────────────────────────────────────────────────────────────
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDe6wm5SrWmNmDLj20CFrv3jx8g6JkQgyM",
-  authDomain: "vetcare-mvp.firebaseapp.com",
-  projectId: "vetcare-mvp",
-  storageBucket: "vetcare-mvp.firebasestorage.app",
-  messagingSenderId: "1002161594654",
-  appId: "1:1002161594654:web:25bf86c57673a0bbe4290f",
-};
-const firebaseApp = initializeApp(FIREBASE_CONFIG);
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
-
-// ─── CLOUD HELPERS ────────────────────────────────────────────────────────────
-const cloud = {
-  async save(uid, key, data) {
-    const payload = key === "profile" ? data : { list: data };
-    await setDoc(doc(db, "vets", uid, "data", key), payload, {
-      merge: key === "profile",
-    });
-  },
-  async loadAll(uid) {
-    const [pro, pet, vis, vac, apt, inv] = await Promise.all([
-      getDoc(doc(db, "vets", uid, "data", "profile")),
-      getDoc(doc(db, "vets", uid, "data", "pets")),
-      getDoc(doc(db, "vets", uid, "data", "visits")),
-      getDoc(doc(db, "vets", uid, "data", "vaccines")),
-      getDoc(doc(db, "vets", uid, "data", "appointments")),
-      getDoc(doc(db, "vets", uid, "data", "inventory")),
-    ]);
     const list = (s) => (s.exists() ? s.data().list || [] : []);
     return {
       profile: pro.exists() ? pro.data() : null,
@@ -56,46 +13,14 @@ const cloud = {
 async function sendRegistrationEmail(name, clinic, email) {
   try {
     const formData = new FormData();
-    formData.append("access_key", "b6706da0-295d-4ad1-a5c4-7cbfbb861ede");
-    formData.append("subject", "🐾 Nueva veterinaria registrada en VetCare MVP");
-    formData.append("from_name", "VetCare MVP");
-    formData.append("name", name);
-    formData.append("email", email);
-    formData.append("message",
-      `Nueva veterinaria registrada:\n\nNombre: ${name}\nClínica: ${clinic}\nCorreo: ${email}\nFecha: ${new Date().toLocaleString("es-ES")}`
-    );
-
-    const response = await fetch("https://api.web3forms.com/submit", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await response.json();
+    for
     if (data.success) {
       console.log("✅ Notificación enviada a tu correo");
     } else {
       console.warn("⚠️ Web3Forms error:", data);
     }
   } catch (e) {
-    console.error("Error Web3Forms:", e);
-  }
-}
-function exportData(profile, pets, visits, vaccines, appointments, inventory) {
-  const obj = {
-    _meta: {
-      exportDate: new Date().toISOString(),
-      vetcareVersion: "MVP-2.1",
-      migracionKey: profile?.email,
-    },
-    profile,
-    pets,
-    visits,
-    vaccines,
-    appointments,
-    inventory,
-  };
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(
+    consol
     new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" })
   );
   a.download = `vetcare_${profile?.email?.replace(/@/g, "_at_")}_${
